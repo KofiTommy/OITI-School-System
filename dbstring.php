@@ -1,5 +1,5 @@
 <?php
-$_Localhost="localhost";
+$_Localhost="u131576917_oiti";
 $_Database="u131576917_oiti";
 $_User="root";
 $_Password="Akusika.Tom???@@1";

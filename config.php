@@ -1,6 +1,6 @@
 <?php
 /////// Update your database login details here /////
-$dbhost_name = "localhost"; // Your host name 
+$dbhost_name = "u131576917_oiti"; // Your host name 
 $database = "u131576917_oiti";       // Your database name
 $username = "root";            // Your login userid 
 $password = "Akusika.Tom???@@1";            // Your password 
