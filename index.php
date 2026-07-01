@@ -50,9 +50,12 @@ if(trim((string)$__AdmissionBranchContext["branchid"]) !== ""){
 }
 
 $_SQL_Item_2=mysqli_query($con,"SELECT * FROM tblcurrency");
-if($row_item_2=mysqli_fetch_array($_SQL_Item_2,MYSQLI_ASSOC)){
+if($_SQL_Item_2 && ($row_item_2=mysqli_fetch_array($_SQL_Item_2,MYSQLI_ASSOC))){
 $_SESSION['CURRENCY']=$row_item_2['currencyname'];
 $_SESSION['SYMBOL']=$row_item_2['symbol'];
+}
+elseif(!$_SQL_Item_2){
+error_log("Failed to load tblcurrency in index.php: ".mysqli_error($con));
 }
 
 if(isset($_POST["login"])){
