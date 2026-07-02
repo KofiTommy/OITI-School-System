@@ -35,10 +35,12 @@ $obj_browser->setBrowser(1);
 
 <?php
 include("dbstring.php");
+include_once("api-auth-utils.php");
 include_once("online-admission-utils.php");
 include_once("user-management-utils.php");
 ensure_online_admission_tables($con);
 ensure_user_management_columns($con);
+ensure_api_auth_record($con);
 
 $_PublicAdmissionOpen=false;
 $_PublicAdmissionPaymentEnabled=false;
