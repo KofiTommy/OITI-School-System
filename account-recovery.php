@@ -64,11 +64,10 @@ mysqli_close($con);
 <?php
 include('dbstring.php');
 //Declare the variables
-@$verificationcode =$_POST['verification_code'];
-
-@$UserName =$_POST['username'];
-@$NewPassword =md5($_POST['new-password']);
-//@$RepeatPassword =md5($_POST['repeat-password']);
+@$verificationcode = isset($_POST['verification_code']) ? trim((string)$_POST['verification_code']) : "";
+@$UserName = isset($_POST['username']) ? trim((string)$_POST['username']) : "";
+@$NewPasswordRaw = isset($_POST['new-password']) ? (string)$_POST['new-password'] : "";
+@$RepeatPasswordRaw = isset($_POST['repeat-password']) ? (string)$_POST['repeat-password'] : "";
 
 
 @$errMessage="";
@@ -77,24 +76,94 @@ include('dbstring.php');
 //insert category record
 if(isset($_POST["submit_verification_code"]))
 {
-//echo $verificationcode;
     //Check connection
     if(mysqli_connect_errno())
     {
     echo "Failed to connect to MySQL:" .mysqli_connect_error();
     }
-        $sql2 ="UPDATE tblsystemuser SET username='$UserName',password='$NewPassword' WHERE verificationcode='$verificationcode'";
 
-        if(!mysqli_query($con,$sql2))
+    if($verificationcode === "" || $UserName === "" || $NewPasswordRaw === "" || $RepeatPasswordRaw === "")
+    {
+        $errMessage = "<div align='center' class='errorMsg'  style='background-color:#fdd;color:#900;padding:5px;border:1px solid #c66;'> Verification code, username and password are required. </div><br/>";
+    }
+    elseif($NewPasswordRaw !== $RepeatPasswordRaw)
+    {
+        $errMessage = "<div align='center' class='errorMsg'  style='background-color:#fdd;color:#900;padding:5px;border:1px solid #c66;'> The repeated password does not match the new password. </div><br/>";
+    }
+    elseif(strlen($NewPasswordRaw) < 6)
+    {
+        $errMessage = "<div align='center' class='errorMsg'  style='background-color:#fdd;color:#900;padding:5px;border:1px solid #c66;'> New password must be at least 6 characters. </div><br/>";
+    }
+    else
+    {
+        $targetUserId = "";
+        $stmtUser = @mysqli_prepare($con, "SELECT userid FROM tblsystemuser WHERE verificationcode=? LIMIT 1");
+        if(!$stmtUser)
         {
-        die('Error:' .mysqli_error($con));
+            die('Error:' .mysqli_error($con));
+        }
+
+        mysqli_stmt_bind_param($stmtUser, "s", $verificationcode);
+        mysqli_stmt_execute($stmtUser);
+        $userResult = mysqli_stmt_get_result($stmtUser);
+        if($userResult && ($userRow = mysqli_fetch_array($userResult, MYSQLI_ASSOC)))
+        {
+            $targetUserId = trim((string)$userRow['userid']);
+        }
+        mysqli_stmt_close($stmtUser);
+
+        if($targetUserId === "")
+        {
+            $errMessage = "<div align='center' class='errorMsg'  style='background-color:#fdd;color:#900;padding:5px;border:1px solid #c66;'> The verification code is invalid or has expired. </div><br/>";
         }
         else
         {
+            $stmtDuplicate = @mysqli_prepare($con, "SELECT userid FROM tblsystemuser WHERE username=? AND userid<>? LIMIT 1");
+            if(!$stmtDuplicate)
+            {
+                die('Error:' .mysqli_error($con));
+            }
 
-        $errMessage = "<div align='center' class='errorMsg'  style='background-color:#afa;color:black;padding:5px;border:1px solid green;'> Account Successfully Changed   </div><br/>";
-        mysqli_close($con);
-        }    
+            mysqli_stmt_bind_param($stmtDuplicate, "ss", $UserName, $targetUserId);
+            mysqli_stmt_execute($stmtDuplicate);
+            $duplicateResult = mysqli_stmt_get_result($stmtDuplicate);
+            $duplicateUsername = ($duplicateResult && mysqli_num_rows($duplicateResult) > 0);
+            mysqli_stmt_close($stmtDuplicate);
+
+            if($duplicateUsername)
+            {
+                $errMessage = "<div align='center' class='errorMsg'  style='background-color:#fdd;color:#900;padding:5px;border:1px solid #c66;'> That username is already used by another account. </div><br/>";
+            }
+            else
+            {
+                $NewPassword = md5($NewPasswordRaw);
+                $stmtUpdate = @mysqli_prepare($con, "UPDATE tblsystemuser SET username=?,password=?,verificationcode='' WHERE userid=? AND verificationcode=? LIMIT 1");
+                if(!$stmtUpdate)
+                {
+                    die('Error:' .mysqli_error($con));
+                }
+
+                mysqli_stmt_bind_param($stmtUpdate, "ssss", $UserName, $NewPassword, $targetUserId, $verificationcode);
+                $saved = mysqli_stmt_execute($stmtUpdate);
+                $affected = mysqli_stmt_affected_rows($stmtUpdate);
+                mysqli_stmt_close($stmtUpdate);
+
+                if($saved && $affected > 0)
+                {
+                    $errMessage = "<div align='center' class='errorMsg'  style='background-color:#afa;color:black;padding:5px;border:1px solid green;'> Account Successfully Changed   </div><br/>";
+                    mysqli_close($con);
+                }
+                elseif($saved)
+                {
+                    $errMessage = "<div align='center' class='errorMsg'  style='background-color:#fdd;color:#900;padding:5px;border:1px solid #c66;'> The verification code is invalid or has expired. </div><br/>";
+                }
+                else
+                {
+                    die('Error:' .mysqli_error($con));
+                }
+            }
+        }
+    }
 }
 ?>
 

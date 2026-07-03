@@ -257,6 +257,24 @@ if (!function_exists('adminPasswordResetApplyCredentialReset')) {
             return $result;
         }
 
+        $duplicateUsername = false;
+        $stmtCheckUsername = mysqli_prepare($con, "SELECT userid FROM tblsystemuser WHERE username=? AND userid<>? LIMIT 1");
+        if (!$stmtCheckUsername) {
+            $result['message'] = 'Reset failed. Could not prepare username check query.';
+            return $result;
+        }
+
+        mysqli_stmt_bind_param($stmtCheckUsername, "ss", $newUsername, $targetUserId);
+        mysqli_stmt_execute($stmtCheckUsername);
+        $duplicateResult = mysqli_stmt_get_result($stmtCheckUsername);
+        $duplicateUsername = ($duplicateResult && mysqli_num_rows($duplicateResult) > 0);
+        mysqli_stmt_close($stmtCheckUsername);
+
+        if ($duplicateUsername) {
+            $result['message'] = 'That username is already used by another account.';
+            return $result;
+        }
+
         $newPassword = md5($newPasswordRaw);
         $stmtUpdate = mysqli_prepare($con, "UPDATE tblsystemuser
             SET username=?, password=?, password_reset_required=1, password_last_reset_at=NOW()
